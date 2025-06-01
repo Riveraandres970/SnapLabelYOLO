@@ -3,7 +3,7 @@ import os
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget,
     QFileDialog, QDialog, QLineEdit, QLabel, QSpinBox, QHBoxLayout,
-    QMessageBox, QToolButton
+    QMessageBox, QToolButton, QListView, QAbstractItemView
 )
 from PyQt6.QtCore import Qt, QRect, QPoint
 import cv2
@@ -290,10 +290,15 @@ class VentanaEntrenamiento(QDialog):
             file_dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)  # Fundamental para múltiples selecciones
             file_dialog.setViewMode(QFileDialog.ViewMode.List)
             
-            # Permitir selección múltiple
+            # Configurar selección múltiple
             file_dialog.setFileMode(QFileDialog.FileMode.Directory)
-            file_dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
             
+            # Acceder al QListView interno y configurar selección extendida
+            list_view = file_dialog.findChild(QListView, "listView")
+            if list_view:
+                list_view.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+            
+            # Mostrar diálogo y procesar selección
             if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
                 carpetas = file_dialog.selectedFiles()
                 if carpetas:
