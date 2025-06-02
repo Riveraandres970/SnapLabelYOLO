@@ -512,32 +512,32 @@ class VentanaPrincipal(QMainWindow):
         dialog = SubVentanaCaptura()
         dialog.exec()
 
-        def subir_imagen(self):
-            ruta_imagen, _ = QFileDialog.getOpenFileName(self, "Seleccionar imagen", "", "Imagenes (*.jpg *.png *.jpeg)")
-            if not ruta_imagen:
-                return
+    def subir_imagen(self):
+        ruta_imagen, _ = QFileDialog.getOpenFileName(self, "Seleccionar imagen", "", "Imagenes (*.jpg *.png *.jpeg)")
+        if not ruta_imagen:
+            return
 
-            carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta destino")
-            if not carpeta:
-                return
+        carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta destino")
+        if not carpeta:
+            return
 
-            config_path = os.path.join(carpeta, "config.json")
-            if not os.path.exists(config_path):
-                QMessageBox.warning(self, "Error", "La carpeta seleccionada no contiene un archivo config.json.")
-                return
+        config_path = os.path.join(carpeta, "config.json")
+        if not os.path.exists(config_path):
+            QMessageBox.warning(self, "Error", "La carpeta seleccionada no contiene un archivo config.json.")
+            return
 
-            with open(config_path, "r") as f:
-                config = json.load(f)
+        with open(config_path, "r") as f:
+            config = json.load(f)
 
-            nombre_clase = config["nombre_clase"]
-            ultimo_id = config["ultimo_id"]
+        nombre_clase = config["nombre_clase"]
+        ultimo_id = config["ultimo_id"]
 
-            dialog = VentanaEtiquetadoImagenSubida(ruta_imagen, carpeta, nombre_clase, ultimo_id)
-            if dialog.exec():
-                # actualizar el config solo si se guardó
-                config["ultimo_id"] = dialog.nuevo_id
-                with open(config_path, "w") as f:
-                    json.dump(config, f)
+        dialog = VentanaEtiquetadoImagenSubida(ruta_imagen, carpeta, nombre_clase, ultimo_id)
+        if dialog.exec():
+            # actualizar el config solo si se guardó
+            config["ultimo_id"] = dialog.nuevo_id
+            with open(config_path, "w") as f:
+                json.dump(config, f)    
 
 
 if __name__ == "__main__":
