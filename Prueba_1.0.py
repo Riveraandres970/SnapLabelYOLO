@@ -428,7 +428,3 @@ if __name__ == "__main__":
     window = VentanaPrincipal()
     window.show()
     sys.exit(app.exec())
-
-
-# hola
-# HOLA
