@@ -347,6 +347,94 @@ class VentanaEntrenamiento(QDialog):
             " señales de tráfico, identificación de múltiples especies animales."
         )
 
+class VentanaEtiquetadoImagenSubida(QDialog):
+    def __init__(self, ruta_imagen, carpeta_destino, nombre_clase, ultimo_id):
+        super().__init__()
+        self.setWindowTitle("Etiquetar Imagen Subida")
+        self.setFixedSize(800, 600)
+
+        self.ruta_imagen = ruta_imagen
+        self.carpeta = carpeta_destino
+        self.nombre_clase = nombre_clase
+        self.contador = ultimo_id
+        self.nuevo_id = ultimo_id  # se actualiza solo si se guarda
+
+        self.image_label = QLabel(self)
+        self.image_label.setFixedSize(640, 480)
+        self.image_label.setStyleSheet("border: 1px solid black;")
+        self.btn_guardar = QPushButton("Guardar Etiqueta")
+        self.btn_guardar.setEnabled(False)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.image_label)
+        layout.addWidget(self.btn_guardar)
+        self.setLayout(layout)
+
+        self.btn_guardar.clicked.connect(self.guardar_etiqueta)
+
+        self.caja_inicio = None
+        self.caja_final = None
+        self.rect_dibujo = QRect()
+        self.imagen = cv2.imread(self.ruta_imagen)
+        self.imagen_rgb = cv2.cvtColor(self.imagen, cv2.COLOR_BGR2RGB)
+
+        self.qimg = QImage(self.imagen_rgb.data, self.imagen_rgb.shape[1], self.imagen_rgb.shape[0],
+                           self.imagen_rgb.shape[1]*3, QImage.Format.Format_RGB888)
+        self.image_label.setPixmap(QPixmap.fromImage(self.qimg))
+
+        self.image_label.mousePressEvent = self.mouse_press
+        self.image_label.mouseMoveEvent = self.mouse_move
+        self.image_label.mouseReleaseEvent = self.mouse_release
+
+    def mouse_press(self, event):
+        self.caja_inicio = event.position().toPoint()
+
+    def mouse_move(self, event):
+        if self.caja_inicio:
+            self.caja_final = event.position().toPoint()
+            self.rect_dibujo = QRect(self.caja_inicio, self.caja_final)
+            self.update_dibujo()
+
+    def mouse_release(self, event):
+        self.caja_final = event.position().toPoint()
+        self.rect_dibujo = QRect(self.caja_inicio, self.caja_final)
+        self.update_dibujo()
+        self.btn_guardar.setEnabled(True)
+
+    def update_dibujo(self):
+        pixmap = QPixmap.fromImage(self.qimg)
+        painter = QPainter(pixmap)
+        pen = QPen(Qt.GlobalColor.red)
+        pen.setWidth(2)
+        painter.setPen(pen)
+        painter.drawRect(self.rect_dibujo)
+        painter.end()
+        self.image_label.setPixmap(pixmap)
+
+    def guardar_etiqueta(self):
+        nombre_base = f"img_{self.contador:04d}"
+        ruta_img = os.path.join(self.carpeta, f"{nombre_base}.jpg")
+        ruta_txt = os.path.join(self.carpeta, f"{nombre_base}.txt")
+
+        # Copia la imagen original
+        cv2.imwrite(ruta_img, self.imagen)
+
+        # Coordenadas YOLO normalizadas
+        x1, y1 = self.rect_dibujo.topLeft().x(), self.rect_dibujo.topLeft().y()
+        x2, y2 = self.rect_dibujo.bottomRight().x(), self.rect_dibujo.bottomRight().y()
+        cx = ((x1 + x2) / 2) / 640
+        cy = ((y1 + y2) / 2) / 480
+        w = abs(x2 - x1) / 640
+        h = abs(y2 - y1) / 480
+
+        with open(ruta_txt, 'w') as f:
+            f.write(f"0 {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
+
+        QMessageBox.information(self, "Guardado", f"Imagen y etiqueta guardadas como {nombre_base}.*")
+        self.nuevo_id = self.contador + 1
+        self.accept()
+
+
 class VentanaPrincipal(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -385,6 +473,7 @@ class VentanaPrincipal(QMainWindow):
 
         self.btn_capturar.clicked.connect(self.abrir_subventana_captura)
         self.btn_entrenar.clicked.connect(self.mostrar_ventana_entrenamiento)  # Nueva conexión
+        self.btn_subir.clicked.connect(self.subir_imagen)
 
         # Estilizar botones
         for btn in [self.btn_capturar, self.btn_subir, self.btn_entrenar, 
@@ -422,6 +511,34 @@ class VentanaPrincipal(QMainWindow):
     def abrir_subventana_captura(self):
         dialog = SubVentanaCaptura()
         dialog.exec()
+
+        def subir_imagen(self):
+            ruta_imagen, _ = QFileDialog.getOpenFileName(self, "Seleccionar imagen", "", "Imagenes (*.jpg *.png *.jpeg)")
+            if not ruta_imagen:
+                return
+
+            carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta destino")
+            if not carpeta:
+                return
+
+            config_path = os.path.join(carpeta, "config.json")
+            if not os.path.exists(config_path):
+                QMessageBox.warning(self, "Error", "La carpeta seleccionada no contiene un archivo config.json.")
+                return
+
+            with open(config_path, "r") as f:
+                config = json.load(f)
+
+            nombre_clase = config["nombre_clase"]
+            ultimo_id = config["ultimo_id"]
+
+            dialog = VentanaEtiquetadoImagenSubida(ruta_imagen, carpeta, nombre_clase, ultimo_id)
+            if dialog.exec():
+                # actualizar el config solo si se guardó
+                config["ultimo_id"] = dialog.nuevo_id
+                with open(config_path, "w") as f:
+                    json.dump(config, f)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
