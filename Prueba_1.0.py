@@ -5,15 +5,15 @@ from PyQt6.QtWidgets import (
     QFileDialog, QDialog, QLineEdit, QLabel, QSpinBox, QHBoxLayout,
     QMessageBox, QToolButton, QListView, QAbstractItemView
 )
-from PyQt6.QtCore import Qt, QRect, QPoint
+from PyQt6.QtCore import Qt, QRect, QPoint, QSize
 import cv2
-from PyQt6.QtGui import QImage, QPixmap, QPainter, QPen
+from PyQt6.QtGui import QImage, QPixmap, QPainter, QPen, QIcon
 import json
 
 class VentanaCaptura(QDialog):
     def __init__(self, carpeta_destino):
         super().__init__()
-        self.setWindowTitle("Captura y Etiquetado")
+        self.setWindowTitle("📸 Captura y Etiquetado")
         self.setFixedSize(800, 600)
 
         self.carpeta = carpeta_destino
@@ -44,9 +44,9 @@ class VentanaCaptura(QDialog):
 
         self.image_label = QLabel(self)
         self.image_label.setFixedSize(640, 480)
-        self.image_label.setStyleSheet("border: 1px solid black;")
-        self.btn_capturar = QPushButton("Capturar Imagen")
-        self.btn_guardar = QPushButton("Guardar Etiqueta")
+        self.image_label.setStyleSheet("border: 2px solid #3498db; border-radius: 10px; background-color: #ecf0f1;")
+        self.btn_capturar = QPushButton("📸 Capturar Imagen")
+        self.btn_guardar = QPushButton("💾 Guardar Etiqueta")
         self.btn_guardar.setEnabled(False)
 
         layout = QVBoxLayout()
@@ -55,6 +55,30 @@ class VentanaCaptura(QDialog):
         layout.addWidget(self.btn_capturar)
         layout.addWidget(self.btn_guardar)
         self.setLayout(layout)
+
+        for btn in [self.btn_capturar, self.btn_guardar]:
+            btn.setFixedHeight(40)
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: white;
+                    background-color: #2ecc71;
+                    border-radius: 15px;
+                    padding: 8px;
+                    border: none;
+                }
+                QPushButton:hover {
+                    background-color: #27ae60;
+                }
+                QPushButton:pressed {
+                    background-color: #1e8449;
+                }
+                QPushButton:disabled {
+                    background-color: #bdc3c7;
+                    color: #7f8c8d;
+                }
+            """)
 
         self.btn_capturar.clicked.connect(self.capturar_imagen)
         self.btn_guardar.clicked.connect(self.guardar_etiqueta)
@@ -154,11 +178,31 @@ class VentanaCaptura(QDialog):
 class SubVentanaCaptura(QDialog):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Gestión de Carpetas")
+        self.setWindowTitle("📁 Gestión de Carpetas")
         self.layout = QVBoxLayout()
 
-        self.boton_crear = QPushButton("Crear Carpeta")
-        self.boton_abrir = QPushButton("Abrir Carpeta ya Creada")
+        self.boton_crear = QPushButton("➕ Crear Carpeta")
+        self.boton_abrir = QPushButton("📂 Abrir Carpeta ya Creada")
+
+        for btn in [self.boton_crear, self.boton_abrir]:
+            btn.setFixedHeight(40)
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: white;
+                    background-color: #3498db;
+                    border-radius: 15px;
+                    padding: 8px;
+                    border: none;
+                }
+                QPushButton:hover {
+                    background-color: #2980b9;
+                }
+                QPushButton:pressed {
+                    background-color: #2471a3;
+                }
+            """)
 
         self.layout.addWidget(self.boton_crear)
         self.layout.addWidget(self.boton_abrir)
@@ -170,19 +214,42 @@ class SubVentanaCaptura(QDialog):
 
     def crear_carpeta(self):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Crear Nueva Carpeta")
+        dialog.setWindowTitle("🆕 Crear Nueva Carpeta")
         layout = QVBoxLayout()
 
         self.nombre_label = QLabel("Nombre de la clase / objeto:")
+        self.nombre_label.setStyleSheet("font-size: 14px; font-weight: bold;")
         self.nombre_input = QLineEdit()
+        self.nombre_input.setStyleSheet("padding: 8px; border-radius: 5px; border: 1px solid #ccc;")
+
 
         self.cantidad_label = QLabel("Cantidad de imágenes objetivo:")
+        self.cantidad_label.setStyleSheet("font-size: 14px; font-weight: bold;")
         self.cantidad_input = QSpinBox()
         self.cantidad_input.setMinimum(1)
         self.cantidad_input.setMaximum(10000)
+        self.cantidad_input.setStyleSheet("padding: 8px; border-radius: 5px; border: 1px solid #ccc;")
 
-        crear_button = QPushButton("Crear")
+        crear_button = QPushButton("✅ Crear")
         crear_button.clicked.connect(lambda: self.crear_directorio(dialog))
+        crear_button.setFixedHeight(40)
+        crear_button.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                font-weight: bold;
+                color: white;
+                background-color: #27ae60;
+                border-radius: 15px;
+                padding: 8px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #229954;
+            }
+            QPushButton:pressed {
+                background-color: #1e8449;
+            }
+        """)
 
         layout.addWidget(self.nombre_label)
         layout.addWidget(self.nombre_input)
@@ -206,7 +273,6 @@ class SubVentanaCaptura(QDialog):
             QMessageBox.warning(self, "Carpeta ya existe", f"La carpeta '{nombre}' ya existe en el dataset.")
         else:
             os.makedirs(ruta)
-            # Crear archivo de configuración inicial
             config = {
                 "nombre_clase": nombre,
                 "objetivo": cantidad,
@@ -225,64 +291,129 @@ class SubVentanaCaptura(QDialog):
         carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta existente")
         if carpeta:
             print(f"Carpeta seleccionada: {carpeta}")
-            # Aquí se podrá integrar la captura y anotación
             ventana = VentanaCaptura(carpeta)
             ventana.exec()
 
 class VentanaEntrenamiento(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Selección de Tipo de Entrenamiento")
-        self.setFixedSize(400, 200)
+        self.setWindowTitle("🧠 Selección de Tipo de Entrenamiento")
+        self.setFixedSize(450, 250)
         
         layout = QVBoxLayout()
-        
-        # Mensaje explicativo
+        layout.setContentsMargins(30, 30, 30, 30)
+
         lbl_info = QLabel("Seleccione el tipo de entrenamiento que desea realizar:")
+        lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_info.setStyleSheet("""
+            QLabel {
+                font-size: 15px;
+                font-weight: bold;
+                color: #2c3e50;
+            }
+        """)
         layout.addWidget(lbl_info)
         layout.addSpacing(20)
         
-        # Botón para Uniclase
         hbox_uniclase = QHBoxLayout()
-        btn_uniclase = QPushButton("Uniclase")
-        btn_uniclase.setFixedWidth(150)
+        btn_uniclase = QPushButton("🎯 Uniclase")
+        btn_uniclase.setFixedWidth(180)
+        btn_uniclase.setFixedHeight(45)
+        btn_uniclase.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                font-weight: bold;
+                color: white;
+                background-color: #f39c12;
+                border-radius: 20px;
+                padding: 10px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #e67e22;
+            }
+            QPushButton:pressed {
+                background-color: #d35400;
+            }
+        """)
         btn_uniclase.clicked.connect(lambda: self.seleccionar_carpetas("uniclase"))
+        hbox_uniclase.addStretch()
         hbox_uniclase.addWidget(btn_uniclase)
         
-        # Botón de ayuda para Uniclase
         btn_help_uniclase = QToolButton()
-        btn_help_uniclase.setText("?")
-        btn_help_uniclase.setFixedSize(30, 30)
+        btn_help_uniclase.setText("❓")
+        btn_help_uniclase.setFixedSize(40, 40)
         btn_help_uniclase.setToolTip("Información sobre entrenamiento Uniclase")
+        btn_help_uniclase.setStyleSheet("""
+            QToolButton {
+                font-size: 20px;
+                background-color: #ecf0f1;
+                border-radius: 20px;
+                border: 1px solid #bdc3c7;
+            }
+            QToolButton:hover {
+                background-color: #bdc3c7;
+            }
+        """)
         btn_help_uniclase.clicked.connect(self.mostrar_info_uniclase)
         hbox_uniclase.addWidget(btn_help_uniclase)
+        hbox_uniclase.addStretch()
         
         layout.addLayout(hbox_uniclase)
-        layout.addSpacing(10)
+        layout.addSpacing(15)
         
-        # Botón para Multiclase
         hbox_multiclase = QHBoxLayout()
-        btn_multiclase = QPushButton("Multiclase")
-        btn_multiclase.setFixedWidth(150)
+        btn_multiclase = QPushButton("🌳 Multiclase")
+        btn_multiclase.setFixedWidth(180)
+        btn_multiclase.setFixedHeight(45)
+        btn_multiclase.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                font-weight: bold;
+                color: white;
+                background-color: #9b59b6;
+                border-radius: 20px;
+                padding: 10px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #8e44ad;
+            }
+            QPushButton:pressed {
+                background-color: #7f3299;
+            }
+        """)
         btn_multiclase.clicked.connect(lambda: self.seleccionar_carpetas("multiclase"))
+        hbox_multiclase.addStretch()
         hbox_multiclase.addWidget(btn_multiclase)
         
-        # Botón de ayuda para Multiclase
         btn_help_multiclase = QToolButton()
-        btn_help_multiclase.setText("?")
-        btn_help_multiclase.setFixedSize(30, 30)
+        btn_help_multiclase.setText("❓")
+        btn_help_multiclase.setFixedSize(40, 40)
         btn_help_multiclase.setToolTip("Información sobre entrenamiento Multiclase")
+        btn_help_multiclase.setStyleSheet("""
+            QToolButton {
+                font-size: 20px;
+                background-color: #ecf0f1;
+                border-radius: 20px;
+                border: 1px solid #bdc3c7;
+            }
+            QToolButton:hover {
+                background-color: #bdc3c7;
+            }
+        """)
         btn_help_multiclase.clicked.connect(self.mostrar_info_multiclase)
         hbox_multiclase.addWidget(btn_help_multiclase)
+        hbox_multiclase.addStretch()
         
         layout.addLayout(hbox_multiclase)
         layout.addStretch()
         
         self.setLayout(layout)
+        self.setStyleSheet("background-color: #f5f7fa; border-radius: 10px;")
     
     def seleccionar_carpetas(self, tipo):
         if tipo == "uniclase":
-            # Seleccionar una sola carpeta
             carpeta = QFileDialog.getExistingDirectory(
                 self, 
                 "Seleccionar carpeta de dataset para entrenamiento Uniclase",
@@ -294,24 +425,20 @@ class VentanaEntrenamiento(QDialog):
                 self.iniciar_entrenamiento(tipo, [carpeta])
             else:
                 QMessageBox.warning(self, "Selección requerida", "Debe seleccionar una carpeta para continuar.")
-        else:  # multiclase
-            # Configurar diálogo para selección múltiple de carpetas
+        else:
             file_dialog = QFileDialog(self)
             file_dialog.setWindowTitle("Seleccionar carpetas de dataset para entrenamiento Multiclase")
             file_dialog.setFileMode(QFileDialog.FileMode.Directory)
             file_dialog.setOption(QFileDialog.Option.ShowDirsOnly, True)
-            file_dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)  # Fundamental para múltiples selecciones
+            file_dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
             file_dialog.setViewMode(QFileDialog.ViewMode.List)
             
-            # Configurar selección múltiple
             file_dialog.setFileMode(QFileDialog.FileMode.Directory)
             
-            # Acceder al QListView interno y configurar selección extendida
             list_view = file_dialog.findChild(QListView, "listView")
             if list_view:
                 list_view.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
             
-            # Mostrar diálogo y procesar selección
             if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
                 carpetas = file_dialog.selectedFiles()
                 if carpetas:
@@ -339,49 +466,70 @@ class VentanaEntrenamiento(QDialog):
     def mostrar_info_uniclase(self):
         QMessageBox.information(
             self, 
-            "Entrenamiento Uniclase", 
-            "El entrenamiento UNICLASE se utiliza cuando:\n\n"
-            "- Solo necesitas detectar un tipo de objeto en tus imágenes\n"
-            "- Tu dataset contiene ejemplos de una única categoría\n"
-            "- Quieres un modelo especializado en una sola clase\n\n"
-            "Ejemplos: Detección de rostros, identificación de un producto específico,"
-            " reconocimiento de una única especie animal."
+            "Entrenamiento Uniclase (YOLO)", 
+            "El entrenamiento **Uniclase** se utiliza cuando el objetivo es detectar **un único tipo de objeto** en tus imágenes. \n\n"
+            "Características:\n"
+            "- El modelo se especializa en una sola categoría.\n"
+            "- Tu dataset contiene ejemplos de una única clase de objetos a detectar.\n\n"
+            "**Casos de uso:** Detección de rostros, identificación de un producto específico, reconocimiento de un tipo particular de vehículo."
         )
     
     def mostrar_info_multiclase(self):
         QMessageBox.information(
             self, 
-            "Entrenamiento Multiclase", 
-            "El entrenamiento MULTICLASE se utiliza cuando:\n\n"
-            "- Necesitas detectar múltiples tipos de objetos en una misma imagen\n"
-            "- Tu dataset contiene ejemplos de varias categorías diferentes\n"
-            "- Quieres que el modelo pueda distinguir entre diferentes clases\n\n"
-            "Ejemplos: Detección de varios tipos de frutas, reconocimiento de diferentes"
-            " señales de tráfico, identificación de múltiples especies animales."
+            "Entrenamiento Multiclase (YOLO)", 
+            "El entrenamiento **Multiclase** se utiliza cuando necesitas detectar **múltiples tipos de objetos diferentes** en una misma imagen. \n\n"
+            "Características:\n"
+            "- El modelo puede distinguir entre varias categorías de objetos.\n"
+            "- Tu dataset contiene ejemplos de diversas clases de objetos que deben ser identificados.\n\n"
+            "**Casos de uso:** Detección de varios tipos de frutas (manzana, banana, naranja), reconocimiento de diferentes señales de tráfico (stop, ceda el paso), identificación de múltiples especies animales."
         )
 
 class VentanaEtiquetadoImagenSubida(QDialog):
     def __init__(self, ruta_imagen, carpeta_destino, nombre_clase, ultimo_id):
         super().__init__()
-        self.setWindowTitle("Etiquetar Imagen Subida")
+        self.setWindowTitle("🏷️ Etiquetar Imagen Subida")
         self.setFixedSize(800, 600)
 
         self.ruta_imagen = ruta_imagen
         self.carpeta = carpeta_destino
         self.nombre_clase = nombre_clase
         self.contador = ultimo_id
-        self.nuevo_id = ultimo_id  # se actualiza solo si se guarda
+        self.nuevo_id = ultimo_id
 
         self.image_label = QLabel(self)
         self.image_label.setFixedSize(640, 480)
-        self.image_label.setStyleSheet("border: 1px solid black;")
-        self.btn_guardar = QPushButton("Guardar Etiqueta")
+        self.image_label.setStyleSheet("border: 2px solid #3498db; border-radius: 10px; background-color: #ecf0f1;")
+        self.btn_guardar = QPushButton("💾 Guardar Etiqueta")
         self.btn_guardar.setEnabled(False)
 
         layout = QVBoxLayout()
         layout.addWidget(self.image_label)
         layout.addWidget(self.btn_guardar)
         self.setLayout(layout)
+
+        self.btn_guardar.setFixedHeight(40)
+        self.btn_guardar.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                font-weight: bold;
+                color: white;
+                background-color: #2ecc71;
+                border-radius: 15px;
+                padding: 8px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #27ae60;
+            }
+            QPushButton:pressed {
+                background-color: #1e8449;
+            }
+            QPushButton:disabled {
+                background-color: #bdc3c7;
+                color: #7f8c8d;
+            }
+        """)
 
         self.btn_guardar.clicked.connect(self.guardar_etiqueta)
 
@@ -429,10 +577,8 @@ class VentanaEtiquetadoImagenSubida(QDialog):
         ruta_img = os.path.join(self.carpeta, f"{nombre_base}.jpg")
         ruta_txt = os.path.join(self.carpeta, f"{nombre_base}.txt")
 
-        # Copia la imagen original
         cv2.imwrite(ruta_img, self.imagen)
 
-        # Coordenadas YOLO normalizadas
         x1, y1 = self.rect_dibujo.topLeft().x(), self.rect_dibujo.topLeft().y()
         x2, y2 = self.rect_dibujo.bottomRight().x(), self.rect_dibujo.bottomRight().y()
         cx = ((x1 + x2) / 2) / 640
@@ -452,58 +598,81 @@ class VentanaPrincipal(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Software de Captura y Entrenamiento")
-        self.setFixedSize(500, 500)  # Aumentamos el tamaño para el nuevo mensaje
+        self.setWindowTitle("🌟 Snap Label YOLO - Tu Etiquetador y Entrenador de IA")
+        # Aumentamos ligeramente el tamaño de la ventana para dar más espacio
+        self.setFixedSize(600, 600)  # De 550, 550 a 600, 600
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(15)
         
-        # Mensaje de bienvenida
         mensaje_bienvenida = QLabel(
-            "Bienvenido a Snap Label YOLO, un sistema para la recolección, "
-            "entrenamiento y validación con modelo YOLO.\n\n"
-            "Elige la opción que deseas realizar:"
+            "🚀 Bienvenido a Snap Label YOLO: Un sistema integral para la "
+            "recolección, entrenamiento y validación de modelos YOLO.\n\n"
+            "¡Empieza a potenciar tus proyectos de visión artificial ahora!"
         )
         mensaje_bienvenida.setWordWrap(True)
         mensaje_bienvenida.setAlignment(Qt.AlignmentFlag.AlignCenter)
         mensaje_bienvenida.setStyleSheet("""
             QLabel {
-                font-size: 14px;
+                font-family: 'Segoe UI', sans-serif;
+                font-size: 16px;
                 font-weight: bold;
-                padding: 15px;
-                background-color: #f0f8ff;
-                border-radius: 10px;
-                border: 1px solid #c0d6e4;
+                color: #2c3e50;
+                padding: 20px; /* Mantener padding si funciona bien con el nuevo tamaño */
+                background-color: #eaf2f8;
+                border-radius: 12px;
+                border: 2px solid #aeb6bf;
+                box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.1);
             }
         """)
+        # Considerar establecer un tamaño mínimo para el QLabel si no se ajusta bien
+        # mensaje_bienvenida.setMinimumHeight(120) # Descomentar si el texto sigue recortándose
         layout.addWidget(mensaje_bienvenida)
-        layout.addSpacing(20)
+        layout.addSpacing(30)
 
-        self.btn_capturar = QPushButton("Capturar muestra")
-        self.btn_subir = QPushButton("Subir imagen")
-        self.btn_entrenar = QPushButton("Entrenar")
-        self.btn_validar = QPushButton("Validar")
-        self.btn_tutorial = QPushButton("Tutorial")
+        self.btn_capturar = QPushButton("📸 Capturar Muestra")
+        self.btn_subir = QPushButton("⬆️ Subir Imagen para Etiquetar")
+        self.btn_entrenar = QPushButton("🧠 Entrenar Modelo YOLO")
+        self.btn_validar = QPushButton("✅ Validar Modelo")
+        self.btn_tutorial = QPushButton("📚 Tutorial y Ayuda")
 
         self.btn_capturar.clicked.connect(self.abrir_subventana_captura)
-        self.btn_entrenar.clicked.connect(self.mostrar_ventana_entrenamiento)  # Nueva conexión
+        self.btn_entrenar.clicked.connect(self.mostrar_ventana_entrenamiento)
         self.btn_subir.clicked.connect(self.subir_imagen)
 
-        # Estilizar botones
+        button_style = """
+            QPushButton {
+                font-family: 'Segoe UI', sans-serif;
+                font-size: 16px;
+                font-weight: bold;
+                color: white;
+                background-color: #3498db;
+                border-radius: 20px;
+                padding: 12px 25px;
+                border: none;
+                box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15);
+                transition: background-color 0.3s ease;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+                box-shadow: 3px 3px 12px rgba(0, 0, 0, 0.2);
+            }
+            QPushButton:pressed {
+                background-color: #2471a3;
+                box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.25);
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+                box-shadow: none;
+            }
+        """
+
         for btn in [self.btn_capturar, self.btn_subir, self.btn_entrenar, 
                    self.btn_validar, self.btn_tutorial]:
-            btn.setFixedHeight(45)
-            btn.setStyleSheet("""
-                QPushButton {
-                    font-size: 14px;
-                    font-weight: bold;
-                    background-color: #e1ecf4;
-                    border-radius: 8px;
-                    padding: 8px;
-                }
-                QPushButton:hover {
-                    background-color: #d0e0e3;
-                }
-            """)
+            btn.setFixedHeight(50)
+            btn.setStyleSheet(button_style)
         
         layout.addWidget(self.btn_capturar)
         layout.addWidget(self.btn_subir)
@@ -515,8 +684,8 @@ class VentanaPrincipal(QMainWindow):
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
+        self.setStyleSheet("background-color: #f8f9fa;") 
     
-    # Nuevo método para mostrar la ventana de entrenamiento
     def mostrar_ventana_entrenamiento(self):
         dialog = VentanaEntrenamiento(self)
         dialog.exec()
@@ -526,17 +695,29 @@ class VentanaPrincipal(QMainWindow):
         dialog.exec()
 
     def subir_imagen(self):
-        ruta_imagen, _ = QFileDialog.getOpenFileName(self, "Seleccionar imagen", "", "Imagenes (*.jpg *.png *.jpeg)")
+        ruta_imagen, _ = QFileDialog.getOpenFileName(
+            self, 
+            "Seleccionar imagen", 
+            "", 
+            "Imagenes (*.jpg *.png *.jpeg)"
+        )
         if not ruta_imagen:
             return
 
-        carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta destino")
+        carpeta = QFileDialog.getExistingDirectory(
+            self, 
+            "Seleccionar carpeta destino"
+        )
         if not carpeta:
             return
 
         config_path = os.path.join(carpeta, "config.json")
         if not os.path.exists(config_path):
-            QMessageBox.warning(self, "Error", "La carpeta seleccionada no contiene un archivo config.json.")
+            QMessageBox.warning(
+                self, 
+                "Error", 
+                "La carpeta seleccionada no contiene un archivo config.json."
+            )
             return
 
         with open(config_path, "r") as f:
@@ -545,12 +726,16 @@ class VentanaPrincipal(QMainWindow):
         nombre_clase = config["nombre_clase"]
         ultimo_id = config["ultimo_id"]
 
-        dialog = VentanaEtiquetadoImagenSubida(ruta_imagen, carpeta, nombre_clase, ultimo_id)
+        dialog = VentanaEtiquetadoImagenSubida(
+            ruta_imagen, 
+            carpeta, 
+            nombre_clase, 
+            ultimo_id
+        )
         if dialog.exec():
-            # actualizar el config solo si se guardó
             config["ultimo_id"] = dialog.nuevo_id
             with open(config_path, "w") as f:
-                json.dump(config, f)    
+                json.dump(config, f)
 
 
 if __name__ == "__main__":
