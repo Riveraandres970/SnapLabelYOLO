@@ -15,7 +15,19 @@ class VentanaCaptura(QDialog):
         super().__init__()
         self.setWindowTitle("Captura y Etiquetado")
         self.setFixedSize(800, 600)
+
         self.carpeta = carpeta_destino
+        self.label_nombre_carpeta = QLabel(f"Carpeta actual: {os.path.basename(self.carpeta)}", self)
+        self.label_nombre_carpeta.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label_nombre_carpeta.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                color: #2c3e50;
+                margin-bottom: 10px;
+            }
+        """)
+
         self.config_path = os.path.join(carpeta_destino, "config.json")
         if os.path.exists(self.config_path):
             with open(self.config_path, "r") as f:
@@ -38,6 +50,7 @@ class VentanaCaptura(QDialog):
         self.btn_guardar.setEnabled(False)
 
         layout = QVBoxLayout()
+        layout.addWidget(self.label_nombre_carpeta)
         layout.addWidget(self.image_label)
         layout.addWidget(self.btn_capturar)
         layout.addWidget(self.btn_guardar)
