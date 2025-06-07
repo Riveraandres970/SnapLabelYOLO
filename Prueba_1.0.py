@@ -541,8 +541,15 @@ class VentanaEtiquetadoImagenSubida(QDialog):
 
         self.image_label = QLabel(self)
         self.image_label.setFixedSize(640, 480)
+<<<<<<<<< Temporary merge branch 1
+        self.image_label.setStyleSheet("border: 2px solid #3498db; border-radius: 10px; background-color: #ecf0f1;")
+        self.btn_guardar = QPushButton("💾 Guardar Etiqueta")
+=========
         self.image_label.setStyleSheet("border: 1px solid black;")
         self.btn_guardar = QPushButton("Guardar Etiqueta")
+        self.btn_restaurar = QPushButton("Restaurar imagen original")
+        self.btn_restaurar.setEnabled(False)
+>>>>>>>>> Temporary merge branch 2
         self.btn_guardar.setEnabled(False)
 
         layout = QVBoxLayout()
