@@ -410,7 +410,8 @@ class SubVentanaCaptura(QDialog):
         carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta existente")
         if carpeta:
             print(f"Carpeta seleccionada: {carpeta}")
-            ventana = VentanaCaptura(carpeta)
+            # Se corrigió: antes usaba una variable 'ruta' no definida.
+            ventana = VentanaCaptura(carpeta) 
             ventana.exec()
 
 class VentanaSeleccionModeloYOLO(QDialog):
@@ -537,6 +538,7 @@ class VentanaEntrenamiento(QDialog):
         lbl_info = QLabel("Seleccione el tipo de entrenamiento que desea realizar:")
         lbl_info.setObjectName("infoLabel") 
         lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_info.setWordWrap(True) # ¡Aquí está la solución! Permite que el texto se ajuste si es muy largo.
         layout.addWidget(lbl_info)
         layout.addSpacing(20)
         
