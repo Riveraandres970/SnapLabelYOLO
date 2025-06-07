@@ -1,14 +1,41 @@
 import sys
 import os
+import numpy as np
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget,
     QFileDialog, QDialog, QLineEdit, QLabel, QSpinBox, QHBoxLayout,
-    QMessageBox, QToolButton, QListView, QAbstractItemView
+    QMessageBox, QToolButton, QListView, QAbstractItemView, QCheckBox
 )
 from PyQt6.QtCore import Qt, QRect, QPoint, QSize
 import cv2
 from PyQt6.QtGui import QImage, QPixmap, QPainter, QPen, QIcon
 import json
+
+def mejorar_imagen(imagen):
+    # Verifica si está en color
+    if len(imagen.shape) == 3:
+        # 1. Corrección de contraste y brillo (CLAHE)
+        lab = cv2.cvtColor(imagen, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        cl = clahe.apply(l)
+        limg = cv2.merge((cl, a, b))
+        imagen = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+
+    # 2. Enfocar si está borroso
+    gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
+    claridad = cv2.Laplacian(gris, cv2.CV_64F).var()
+    if claridad < 100:
+        kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+        imagen = cv2.filter2D(imagen, -1, kernel)
+
+    # 3. Reducción de ruido
+    imagen = cv2.bilateralFilter(imagen, 9, 75, 75)
+
+    # 4. Redimensionar (opcional)
+    imagen = cv2.resize(imagen, (640, 480))
+
+    return imagen
 
 class VentanaCaptura(QDialog):
     def __init__(self, carpeta_destino):
@@ -49,11 +76,22 @@ class VentanaCaptura(QDialog):
         self.btn_guardar = QPushButton("💾 Guardar Etiqueta")
         self.btn_guardar.setEnabled(False)
 
+        self.checkbox_mejora = QCheckBox("Mejorar imagen automáticamente al capturar")
+        self.checkbox_mejora.setChecked(True)  # Activado por defecto
+        self.checkbox_mejora.setStyleSheet("""
+            QCheckBox {
+                font-size: 14px;
+                font-weight: bold;
+                color: #2c3e50;
+            }
+        """)
+
         layout = QVBoxLayout()
         layout.addWidget(self.label_nombre_carpeta)
         layout.addWidget(self.image_label)
         layout.addWidget(self.btn_capturar)
         layout.addWidget(self.btn_guardar)
+        layout.addWidget(self.checkbox_mejora)
         self.setLayout(layout)
 
         for btn in [self.btn_capturar, self.btn_guardar]:
@@ -107,8 +145,12 @@ class VentanaCaptura(QDialog):
 
     def capturar_imagen(self):
         self.killTimer(self.timer)
-        self.imagen_capturada = self.frame_actual.copy()
+        imagen = self.frame_actual.copy()
+        if self.checkbox_mejora.isChecked():
+            imagen = mejorar_imagen(imagen)
+        self.imagen_capturada = imagen
         frame_rgb = cv2.cvtColor(self.imagen_capturada, cv2.COLOR_BGR2RGB)
+
         qimg = QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0],
                       frame_rgb.shape[1]*3, QImage.Format.Format_RGB888)
         self.image_label.setPixmap(QPixmap.fromImage(qimg))
@@ -501,11 +543,29 @@ class VentanaEtiquetadoImagenSubida(QDialog):
         self.image_label.setFixedSize(640, 480)
         self.image_label.setStyleSheet("border: 2px solid #3498db; border-radius: 10px; background-color: #ecf0f1;")
         self.btn_guardar = QPushButton("💾 Guardar Etiqueta")
+        self.image_label.setStyleSheet("border: 1px solid black;")
+        self.btn_guardar = QPushButton("Guardar Etiqueta")
+        self.btn_restaurar = QPushButton("Restaurar imagen original")
+        self.btn_restaurar.setEnabled(False)
         self.btn_guardar.setEnabled(False)
 
         layout = QVBoxLayout()
         layout.addWidget(self.image_label)
         layout.addWidget(self.btn_guardar)
+        layout.addWidget(self.btn_restaurar)
+        # CHECKBOX DE MEJORA
+        self.checkbox_mejora = QCheckBox("Aplicar mejora automática")
+        self.checkbox_mejora.setChecked(False)
+        self.checkbox_mejora.setStyleSheet("""
+            QCheckBox {
+                font-size: 14px;
+                font-weight: bold;
+                color: #2c3e50;
+            }
+        """)
+        self.checkbox_mejora.setToolTip("Mejora contraste, nitidez y reduce ruido en la imagen antes de etiquetar.")
+        self.checkbox_mejora.stateChanged.connect(self.aplicar_mejora_si_necesario)
+        layout.addWidget(self.checkbox_mejora)
         self.setLayout(layout)
 
         self.btn_guardar.setFixedHeight(40)
@@ -531,12 +591,14 @@ class VentanaEtiquetadoImagenSubida(QDialog):
             }
         """)
 
+        self.btn_restaurar.clicked.connect(self.restaurar_imagen_original)
         self.btn_guardar.clicked.connect(self.guardar_etiqueta)
 
         self.caja_inicio = None
         self.caja_final = None
         self.rect_dibujo = QRect()
-        self.imagen = cv2.imread(self.ruta_imagen)
+        self.imagen = cv2.imread(self.ruta_imagen)           # Cargar la imagen desde el archivo
+        self.imagen_original = self.imagen.copy()            # Guardar una copia como respaldo
         self.imagen_rgb = cv2.cvtColor(self.imagen, cv2.COLOR_BGR2RGB)
 
         self.qimg = QImage(self.imagen_rgb.data, self.imagen_rgb.shape[1], self.imagen_rgb.shape[0],
@@ -546,6 +608,28 @@ class VentanaEtiquetadoImagenSubida(QDialog):
         self.image_label.mousePressEvent = self.mouse_press
         self.image_label.mouseMoveEvent = self.mouse_move
         self.image_label.mouseReleaseEvent = self.mouse_release
+
+    def aplicar_mejora_si_necesario(self):
+        if self.checkbox_mejora.isChecked():
+            self.imagen = mejorar_imagen(self.imagen_original.copy())
+            self.btn_restaurar.setEnabled(True)
+        else:
+            self.imagen = self.imagen_original.copy()
+            self.btn_restaurar.setEnabled(False)
+
+        self.imagen_rgb = cv2.cvtColor(self.imagen, cv2.COLOR_BGR2RGB)
+        self.qimg = QImage(self.imagen_rgb.data, self.imagen_rgb.shape[1], self.imagen_rgb.shape[0],
+                        self.imagen_rgb.shape[1]*3, QImage.Format.Format_RGB888)
+        self.image_label.setPixmap(QPixmap.fromImage(self.qimg))
+
+    def restaurar_imagen_original(self):
+        self.imagen = self.imagen_original.copy()
+        imagen_rgb = cv2.cvtColor(self.imagen, cv2.COLOR_BGR2RGB)
+        self.qimg = QImage(imagen_rgb.data, imagen_rgb.shape[1], imagen_rgb.shape[0],
+                        imagen_rgb.shape[1]*3, QImage.Format.Format_RGB888)
+        self.image_label.setPixmap(QPixmap.fromImage(self.qimg))
+        self.btn_restaurar.setEnabled(False)
+        self.checkbox_mejora.setChecked(False)
 
     def mouse_press(self, event):
         self.caja_inicio = event.position().toPoint()
