@@ -161,32 +161,6 @@ DARK_THEME_STYLESHEET = """
     }
 """
 
-def obtener_o_crear_indice_clase(nombre_clase, archivo_clases="clases.txt"):
-    import os
-    if not os.path.exists(archivo_clases):
-        with open(archivo_clases, 'w') as f:
-            pass  # crea archivo vacío
-
-    with open(archivo_clases, 'r') as f:
-        clases = [line.strip() for line in f.readlines()]
-
-    if nombre_clase in clases:
-        return clases.index(nombre_clase)
-
-    for i, clase in enumerate(clases):
-        if clase == "":
-            clases[i] = nombre_clase
-            break
-    else:
-        clases.append(nombre_clase)
-        i = len(clases) - 1
-
-    with open(archivo_clases, 'w') as f:
-        for c in clases:
-            f.write(c + '\n')
-
-    return i
-
 def mejorar_imagen(imagen):
     # Verifica si está en color
     if len(imagen.shape) == 3:
@@ -214,14 +188,12 @@ def mejorar_imagen(imagen):
     return imagen
 
 class VentanaCaptura(QDialog):
-    def __init__(self, carpeta_destino,indice_clase):
+    def __init__(self, carpeta_destino):
         super().__init__()
-
         self.setWindowTitle("📸 Captura y Etiquetado")
         self.setFixedSize(800, 600)
 
         self.carpeta = carpeta_destino
-        self.indice_clase = indice_clase
         self.label_nombre_carpeta = QLabel(f"Carpeta actual: {os.path.basename(self.carpeta)}", self)
         self.label_nombre_carpeta.setObjectName("infoLabel") 
         self.label_nombre_carpeta.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -348,7 +320,7 @@ class VentanaCaptura(QDialog):
         h = abs(y2 - y1) / 480
 
         with open(ruta_txt, 'w') as f:
-            f.write(f"{self.indice_clase} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
+            f.write(f"0 {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
 
         QMessageBox.information(self, "Guardado", f"Imagen y etiqueta guardadas como {nombre_base}.*")
         self.btn_guardar.setEnabled(False)
@@ -411,7 +383,7 @@ class SubVentanaCaptura(QDialog):
         nombre = self.nombre_input.text().strip()
         cantidad = self.cantidad_input.value()
         ruta = os.path.join("dataset", nombre)
-        indice = obtener_o_crear_indice_clase(nombre)
+
         if not nombre:
             QMessageBox.warning(self, "Error", "Debe ingresar un nombre para la clase/objeto.")
             return
@@ -423,40 +395,30 @@ class SubVentanaCaptura(QDialog):
             config = {
                 "nombre_clase": nombre,
                 "objetivo": cantidad,
-                "ultimo_id": 0,
-                "indice_clase": indice
+                "ultimo_id": 0
             }
-            
             with open(os.path.join(ruta, "config.json"), "w") as f:
                 json.dump(config, f)
 
             QMessageBox.information(self, "Éxito", f"Carpeta '{nombre}' creada correctamente.")
             dialog.accept()
 
-            ventana = VentanaCaptura(ruta, indice)
+            ventana = VentanaCaptura(ruta)
             ventana.exec()
 
     def abrir_carpeta(self):
         carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta existente")
         if carpeta:
             print(f"Carpeta seleccionada: {carpeta}")
-
-            config_path = os.path.join(carpeta, "config.json")
-            if not os.path.exists(config_path):
-                QMessageBox.critical(self, "Error", "No se encontró el archivo config.json en esta carpeta.")
-                return
-
-            with open(config_path, "r") as f:
-                config = json.load(f)
-                indice = config.get("indice_clase", 0)  # valor por defecto 0 si no existe
-
-            ventana = VentanaCaptura(carpeta, indice)
+            ventana = VentanaCaptura(carpeta) 
             ventana.exec()
 
 class VentanaSeleccionModeloYOLO(QDialog):
-    def __init__(self, tipo_entrenamiento, parent=None):
+    # Se agrega dataset_paths al constructor para recibir las rutas seleccionadas
+    def __init__(self, tipo_entrenamiento, dataset_paths, parent=None):
         super().__init__(parent)
         self.tipo_entrenamiento = tipo_entrenamiento
+        self.dataset_paths = dataset_paths # Guarda las rutas de los datasets
         self.setWindowTitle(f"⚙️ Seleccionar Modelo YOLO para {tipo_entrenamiento.capitalize()}")
         self.setFixedSize(550, 450)
 
@@ -525,6 +487,7 @@ class VentanaSeleccionModeloYOLO(QDialog):
             btn_model = QPushButton(f"🚀 {model_name}")
             btn_model.setFixedWidth(200) 
             btn_model.setFixedHeight(45)
+            # Conecta el botón a la nueva función de simulación
             btn_model.clicked.connect(lambda checked, m=model_name: self.iniciar_entrenamiento_modelo(m))
             
             hbox.addWidget(btn_model)
@@ -548,13 +511,44 @@ class VentanaSeleccionModeloYOLO(QDialog):
         self.setStyleSheet(DARK_THEME_STYLESHEET)
 
     def iniciar_entrenamiento_modelo(self, model_name):
+        # Llama a la función de simulación de entrenamiento
+        self.simular_entrenamiento_yolo(model_name, self.tipo_entrenamiento, self.dataset_paths)
+        self.accept() # Cierra la ventana después de iniciar la simulación
+
+    def simular_entrenamiento_yolo(self, model_name, training_type, dataset_paths):
+        """
+        Esta función simula el inicio de un entrenamiento YOLO.
+        Aquí es donde se integraría el código real para cargar el dataset y ejecutar el entrenamiento.
+        """
+        msg = f"Iniciando simulación de entrenamiento YOLO:\n\n"
+        msg += f"Modelo Seleccionado: {model_name}\n"
+        msg += f"Tipo de Entrenamiento: {training_type.capitalize()}\n"
+        
+        if training_type == "uniclase":
+            msg += f"Carpeta del Dataset: {dataset_paths}\n"
+        elif training_type == "multiclase":
+            msg += f"Carpetas del Dataset:\n"
+            if isinstance(dataset_paths, list):
+                for path in dataset_paths:
+                    msg += f"  - {path}\n"
+            else: # En caso de que por alguna razón sea un string y debería ser lista
+                 msg += f"  - {dataset_paths}\n"
+        
+        msg += "\nAquí es donde integrarías tu código real para:\n"
+        msg += "1. Cargar el dataset (imágenes y etiquetas) de las rutas especificadas.\n"
+        msg += "2. Configurar el modelo YOLO seleccionado (v3, v5, v8, etc.).\n"
+        msg += "3. Iniciar el proceso de entrenamiento usando librerías como `ultralytics`.\n"
+        msg += "   Ejemplo (para YOLOv8 con `ultralytics`):\n"
+        msg += "   `from ultralytics import YOLO`\n"
+        msg += "   `model = YOLO('yolov8n.pt')  # Carga un modelo pre-entrenado`\n"
+        msg += "   `results = model.train(data='ruta/a/tu/data.yaml', epochs=100)`\n"
+        msg += "\n¡Asegúrate de tener las librerías necesarias instaladas (e.g., `pip install ultralytics opencv-python`)!"
+
         QMessageBox.information(
             self,
-            "Iniciando Entrenamiento",
-            f"Has seleccionado el modelo {model_name} para entrenamiento {self.tipo_entrenamiento}.\n\n"
-            "Aquí se integraría la lógica para cargar el dataset y ejecutar el entrenamiento real con el modelo elegido."
+            "Simulación de Entrenamiento Iniciada",
+            msg
         )
-        self.accept()
 
     def mostrar_info_modelo_yolo(self, model_name, description, usage):
         QMessageBox.information(
@@ -577,7 +571,7 @@ class VentanaEntrenamiento(QDialog):
         lbl_info = QLabel("Seleccione el tipo de entrenamiento que desea realizar:")
         lbl_info.setObjectName("infoLabel") 
         lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_info.setWordWrap(True) # ¡Aquí está la solución! Permite que el texto se ajuste si es muy largo.
+        lbl_info.setWordWrap(True) 
         layout.addWidget(lbl_info)
         layout.addSpacing(20)
         
@@ -623,18 +617,28 @@ class VentanaEntrenamiento(QDialog):
         self.setStyleSheet(DARK_THEME_STYLESHEET)
 
     def seleccionar_carpetas(self, tipo):
+        selected_paths = None
         if tipo == "uniclase":
-            carpeta = QFileDialog.getExistingDirectory(
-                self, 
-                "Seleccionar carpeta de dataset para entrenamiento Uniclase",
-                "",
-                QFileDialog.Option.ShowDirsOnly
-            )
+            # Usar QFileDialog explícito para mantener el estilo
+            file_dialog = QFileDialog(self)
+            file_dialog.setWindowTitle("Seleccionar carpeta de dataset para entrenamiento Uniclase")
+            file_dialog.setFileMode(QFileDialog.FileMode.Directory) # Selecciona solo directorios
+            file_dialog.setOption(QFileDialog.Option.ShowDirsOnly, True)
+            file_dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True) # Fuerza el diálogo no nativo
+            file_dialog.setViewMode(QFileDialog.ViewMode.List) # Vista de lista para consistencia
             
-            if carpeta:
-                self.abrir_seleccion_modelo_yolo(tipo)
-            else:
-                QMessageBox.warning(self, "Selección requerida", "Debe seleccionar una carpeta para continuar.")
+            # La selección de modo simple es el comportamiento por defecto para un solo directorio
+            # No es necesario establecer SingleSelection explícitamente en el QListView
+
+            if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
+                carpetas_seleccionadas = file_dialog.selectedFiles()
+                if carpetas_seleccionadas:
+                    selected_paths = carpetas_seleccionadas[0] # Tomar la primera (y única) ruta seleccionada
+                else:
+                    QMessageBox.warning(self, "Selección requerida", "Debe seleccionar una carpeta para continuar.")
+                    return # Salir si no se selecciona carpeta
+            else: # El usuario canceló el diálogo
+                return
         else:  # multiclase
             file_dialog = QFileDialog(self)
             file_dialog.setWindowTitle("Seleccionar carpetas de dataset para entrenamiento Multiclase")
@@ -650,13 +654,22 @@ class VentanaEntrenamiento(QDialog):
             if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
                 carpetas = file_dialog.selectedFiles()
                 if carpetas:
-                    self.abrir_seleccion_modelo_yolo(tipo)
+                    selected_paths = carpetas
                 else:
                     QMessageBox.warning(self, "Selección requerida", "Debe seleccionar al menos una carpeta para continuar.")
-    
-    def abrir_seleccion_modelo_yolo(self, tipo_entrenamiento):
+                    return # Salir si no se selecciona carpeta
+            else: # El usuario canceló el diálogo
+                return
+        
+        # Si se seleccionaron rutas, abrir la ventana de selección de modelo
+        if selected_paths:
+            self.abrir_seleccion_modelo_yolo(tipo, selected_paths)
+
+    # Ahora recibe las rutas del dataset
+    def abrir_seleccion_modelo_yolo(self, tipo_entrenamiento, dataset_paths):
         self.close() 
-        dialog = VentanaSeleccionModeloYOLO(tipo_entrenamiento, self.parent())
+        # Pasa las rutas del dataset al constructor de VentanaSeleccionModeloYOLO
+        dialog = VentanaSeleccionModeloYOLO(tipo_entrenamiento, dataset_paths, self.parent())
         dialog.exec()
 
     def mostrar_info_uniclase(self):
@@ -682,14 +695,13 @@ class VentanaEntrenamiento(QDialog):
         )
 
 class VentanaEtiquetadoImagenSubida(QDialog):
-    def __init__(self, ruta_imagen, carpeta_destino, nombre_clase, ultimo_id, indice_clase):
+    def __init__(self, ruta_imagen, carpeta_destino, nombre_clase, ultimo_id):
         super().__init__()
         self.setWindowTitle("🏷️ Etiquetar Imagen Subida")
         self.setFixedSize(800, 600)
 
         self.ruta_imagen = ruta_imagen
         self.carpeta = carpeta_destino
-        self.indice_clase = indice_clase
         self.nombre_clase = nombre_clase
         self.contador = ultimo_id
         self.nuevo_id = ultimo_id
@@ -792,7 +804,7 @@ class VentanaEtiquetadoImagenSubida(QDialog):
         h = abs(y2 - y1) / 480
 
         with open(ruta_txt, 'w') as f:
-            f.write(f"{self.indice_clase} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
+            f.write(f"0 {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
 
         QMessageBox.information(self, "Guardado", f"Imagen y etiqueta guardadas como {nombre_base}.*")
         self.nuevo_id = self.contador + 1
@@ -887,8 +899,12 @@ class VentanaPrincipal(QMainWindow):
         nombre_clase = config["nombre_clase"]
         ultimo_id = config["ultimo_id"]
 
-        indice_clase = obtener_o_crear_indice_clase(nombre_clase)
-        dialog = VentanaEtiquetadoImagenSubida(ruta_imagen, carpeta, nombre_clase, ultimo_id, indice_clase)
+        dialog = VentanaEtiquetadoImagenSubida(
+            ruta_imagen, 
+            carpeta, 
+            nombre_clase, 
+            ultimo_id
+        )
         if dialog.exec():
             config["ultimo_id"] = dialog.nuevo_id
             with open(config_path, "w") as f:
