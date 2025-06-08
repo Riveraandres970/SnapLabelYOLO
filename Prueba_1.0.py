@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget,
     QFileDialog, QDialog, QLineEdit, QLabel, QSpinBox, QHBoxLayout,
     QMessageBox, QToolButton, QListView, QAbstractItemView, QCheckBox,
-    QScrollArea 
+    QScrollArea, QTableWidget, QTableWidgetItem
 )
 from PyQt6.QtCore import Qt, QRect, QPoint, QSize 
 import cv2
@@ -823,12 +823,14 @@ class VentanaPrincipal(QMainWindow):
 
         self.btn_capturar = QPushButton("📸 Capturar Muestra")
         self.btn_subir = QPushButton("⬆️ Subir Imagen para Etiquetar")
+        btn_gestionar = QPushButton("🛠️ Gestionar Carpetas")
         self.btn_entrenar = QPushButton("🧠 Entrenar Modelo YOLO")
         self.btn_validar = QPushButton("✅ Validar Modelo")
         self.btn_tutorial = QPushButton("📚 Tutorial y Ayuda")
 
         self.btn_capturar.clicked.connect(self.abrir_subventana_captura)
         self.btn_entrenar.clicked.connect(self.mostrar_ventana_entrenamiento)
+        btn_gestionar.clicked.connect(self.abrir_gestion_carpetas)
         self.btn_subir.clicked.connect(self.subir_imagen)
 
         for btn in [self.btn_capturar, self.btn_subir, self.btn_entrenar, 
@@ -837,6 +839,7 @@ class VentanaPrincipal(QMainWindow):
         
         layout.addWidget(self.btn_capturar)
         layout.addWidget(self.btn_subir)
+        layout.addWidget(btn_gestionar)
         layout.addWidget(self.btn_entrenar)
         layout.addWidget(self.btn_validar)
         layout.addWidget(self.btn_tutorial)
@@ -846,6 +849,10 @@ class VentanaPrincipal(QMainWindow):
         container.setLayout(layout)
         self.setCentralWidget(container)
         self.setStyleSheet(DARK_THEME_STYLESHEET)
+
+    def abrir_gestion_carpetas(self):
+        ventana = VentanaGestionCarpetas()
+        ventana.exec()
     
     def mostrar_ventana_entrenamiento(self):
         dialog = VentanaEntrenamiento(self)
@@ -894,6 +901,191 @@ class VentanaPrincipal(QMainWindow):
             with open(config_path, "w") as f:
                 json.dump(config, f)
 
+class VentanaGestionCarpetas(QDialog):
+    def __init__(self, ruta_dataset="dataset"):
+        super().__init__()
+        self.setWindowTitle("📂 Gestión de Carpetas del Dataset")
+        self.resize(800, 400)
+        self.ruta_dataset = ruta_dataset
+        self.layout = QVBoxLayout()
+        self.tabla = QTableWidget()
+        self.tabla.setColumnCount(6)
+        self.tabla.setHorizontalHeaderLabels([
+            "Nombre clase", "Índice clase", "Nº imágenes", "👁️ Ver", "🖊️ Editar", "🗑️ Eliminar"
+        ])
+        self.layout.addWidget(self.tabla)
+
+        self.boton_refrescar = QPushButton("↻ Refrescar vista")
+        self.boton_refrescar.clicked.connect(self.cargar_tabla)
+        self.layout.addWidget(self.boton_refrescar)
+
+        self.setLayout(self.layout)
+        self.cargar_tabla()
+
+    def cargar_tabla(self):
+        self.tabla.setRowCount(0)
+        if not os.path.exists(self.ruta_dataset):
+            os.makedirs(self.ruta_dataset)
+        for i, nombre_carpeta in enumerate(os.listdir(self.ruta_dataset)):
+            ruta_carpeta = os.path.join(self.ruta_dataset, nombre_carpeta)
+            if not os.path.isdir(ruta_carpeta):
+                continue
+
+            config_path = os.path.join(ruta_carpeta, "config.json")
+            if not os.path.exists(config_path):
+                continue
+
+            with open(config_path, "r") as f:
+                config = json.load(f)
+
+            indice = config.get("indice_clase", "¿?")
+            objetivo = config.get("objetivo", 0)
+            total_imagenes = len([f for f in os.listdir(ruta_carpeta) if f.endswith(".jpg")])
+            fila = self.tabla.rowCount()
+            self.tabla.insertRow(fila)
+            self.tabla.setItem(fila, 0, QTableWidgetItem(nombre_carpeta))
+            self.tabla.setItem(fila, 1, QTableWidgetItem(str(indice)))
+            self.tabla.setItem(fila, 2, QTableWidgetItem(f"{total_imagenes} / {objetivo}"))
+
+            # Botones
+            ver_btn = QPushButton("👁️")
+            editar_btn = QPushButton("🖊️")
+            eliminar_btn = QPushButton("🗑️")
+            self.tabla.setCellWidget(fila, 3, ver_btn)
+            self.tabla.setCellWidget(fila, 4, editar_btn)
+            self.tabla.setCellWidget(fila, 5, eliminar_btn)
+
+            # Conexiones
+            ver_btn.clicked.connect(lambda _, c=ruta_carpeta: self.ver_contenido(c))
+            editar_btn.clicked.connect(lambda _, c=ruta_carpeta: self.editar_config(c))
+            eliminar_btn.clicked.connect(lambda _, c=ruta_carpeta: self.eliminar_carpeta(c))
+
+    def editar_carpeta(self, ruta_carpeta):
+        dialog = VentanaEditarCarpeta(ruta_carpeta, self)
+        if dialog.exec_():
+            self.refrescar_tabla()
+
+    def ver_contenido(self, carpeta):
+        os.startfile(carpeta)
+
+    def editar_config(self, carpeta):
+        ruta_config = os.path.join(carpeta, "config.json")
+        if not os.path.exists(ruta_config):
+            QMessageBox.warning(self, "Error", "No se encontró config.json")
+            return
+
+        with open(ruta_config, "r") as f:
+            config = json.load(f)
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Editar configuración - {os.path.basename(carpeta)}")
+        layout = QVBoxLayout()
+
+        nombre_label = QLabel("Nombre de la clase:")
+        nombre_input = QLineEdit(config.get("nombre_clase", ""))
+        objetivo_label = QLabel("Cantidad objetivo:")
+        objetivo_input = QSpinBox()
+        objetivo_input.setMaximum(10000)
+        objetivo_input.setValue(config.get("objetivo", 0))
+
+        guardar_btn = QPushButton("Guardar cambios")
+        guardar_btn.clicked.connect(lambda: self.guardar_cambios_config(
+            carpeta, nombre_input.text().strip(), objetivo_input.value(), dialog))
+
+        layout.addWidget(nombre_label)
+        layout.addWidget(nombre_input)
+        layout.addWidget(objetivo_label)
+        layout.addWidget(objetivo_input)
+        layout.addWidget(guardar_btn)
+
+        dialog.setLayout(layout)
+        dialog.exec()
+
+    def guardar_cambios_config(self, carpeta, nuevo_nombre, nuevo_objetivo, dialog):
+        ruta_config = os.path.join(carpeta, "config.json")
+        try:
+            with open(ruta_config, "r") as f:
+                config = json.load(f)
+
+            config["nombre_clase"] = nuevo_nombre
+            config["objetivo"] = nuevo_objetivo
+
+            with open(ruta_config, "w") as f:
+                json.dump(config, f)
+
+            QMessageBox.information(self, "Éxito", "Configuración actualizada correctamente.")
+            dialog.accept()
+            self.actualizar_tabla()  # Refresca la vista
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo guardar: {str(e)}")
+
+    def actualizar_tabla(self):
+        self.cargar_tabla()
+
+    def eliminar_carpeta(self, carpeta):
+        confirmar = QMessageBox.question(self, "Confirmar eliminación",
+                                         f"¿Eliminar la carpeta completa?\n{carpeta}",
+                                         QMessageBox.Yes | QMessageBox.No)
+        if confirmar == QMessageBox.Yes:
+            import shutil
+            shutil.rmtree(carpeta)
+            self.cargar_tabla()
+
+
+class VentanaEditarCarpeta(QDialog):
+    def __init__(self, ruta, config, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Editar Carpeta")
+        self.ruta = ruta
+        self.config = config
+
+        layout = QVBoxLayout()
+
+        self.nombre_input = QLineEdit(config["nombre_clase"])
+        self.objetivo_input = QSpinBox()
+        self.objetivo_input.setMinimum(1)
+        self.objetivo_input.setValue(config["objetivo"])
+
+        guardar_btn = QPushButton("Guardar Cambios")
+        guardar_btn.clicked.connect(self.guardar_cambios)
+
+        layout.addWidget(QLabel("Nombre de la clase:"))
+        layout.addWidget(self.nombre_input)
+        layout.addWidget(QLabel("Cantidad de imágenes objetivo:"))
+        layout.addWidget(self.objetivo_input)
+        layout.addWidget(guardar_btn)
+
+        self.setLayout(layout)
+
+    def guardar_cambios(self):
+        nuevo_nombre = self.nombre_input.text().strip()
+        nueva_cantidad = self.cantidad_input.value()
+
+        if not nuevo_nombre:
+            QMessageBox.warning(self, "Error", "El nombre no puede estar vacío.")
+            return
+
+        nombre_actual = self.config.get("nombre_clase", "")
+        if nuevo_nombre != nombre_actual:
+            nueva_ruta = os.path.join("dataset", nuevo_nombre)
+            if os.path.exists(nueva_ruta):
+                QMessageBox.warning(self, "Error", f"La carpeta '{nuevo_nombre}' ya existe.")
+                return
+            try:
+                os.rename(self.ruta_carpeta, nueva_ruta)
+                self.ruta_carpeta = nueva_ruta
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"No se pudo renombrar la carpeta: {str(e)}")
+                return
+
+        self.config["nombre_clase"] = nuevo_nombre
+        self.config["objetivo"] = nueva_cantidad
+
+        with open(os.path.join(self.ruta_carpeta, "config.json"), "w") as f:
+            json.dump(self.config, f)
+
+        QMessageBox.information(self, "Éxito", "Cambios guardados correctamente.")
+        self.accept()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
