@@ -161,6 +161,32 @@ DARK_THEME_STYLESHEET = """
     }
 """
 
+def obtener_o_crear_indice_clase(nombre_clase, archivo_clases="clases.txt"):
+    import os
+    if not os.path.exists(archivo_clases):
+        with open(archivo_clases, 'w') as f:
+            pass  # crea archivo vacío
+
+    with open(archivo_clases, 'r') as f:
+        clases = [line.strip() for line in f.readlines()]
+
+    if nombre_clase in clases:
+        return clases.index(nombre_clase)
+
+    for i, clase in enumerate(clases):
+        if clase == "":
+            clases[i] = nombre_clase
+            break
+    else:
+        clases.append(nombre_clase)
+        i = len(clases) - 1
+
+    with open(archivo_clases, 'w') as f:
+        for c in clases:
+            f.write(c + '\n')
+
+    return i
+
 def mejorar_imagen(imagen):
     # Verifica si está en color
     if len(imagen.shape) == 3:
@@ -188,12 +214,14 @@ def mejorar_imagen(imagen):
     return imagen
 
 class VentanaCaptura(QDialog):
-    def __init__(self, carpeta_destino):
+    def __init__(self, carpeta_destino,indice_clase):
         super().__init__()
+
         self.setWindowTitle("📸 Captura y Etiquetado")
         self.setFixedSize(800, 600)
 
         self.carpeta = carpeta_destino
+        self.indice_clase = indice_clase
         self.label_nombre_carpeta = QLabel(f"Carpeta actual: {os.path.basename(self.carpeta)}", self)
         self.label_nombre_carpeta.setObjectName("infoLabel") 
         self.label_nombre_carpeta.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -320,7 +348,7 @@ class VentanaCaptura(QDialog):
         h = abs(y2 - y1) / 480
 
         with open(ruta_txt, 'w') as f:
-            f.write(f"0 {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
+            f.write(f"{self.indice_clase} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
 
         QMessageBox.information(self, "Guardado", f"Imagen y etiqueta guardadas como {nombre_base}.*")
         self.btn_guardar.setEnabled(False)
@@ -383,7 +411,7 @@ class SubVentanaCaptura(QDialog):
         nombre = self.nombre_input.text().strip()
         cantidad = self.cantidad_input.value()
         ruta = os.path.join("dataset", nombre)
-
+        indice = obtener_o_crear_indice_clase(nombre)
         if not nombre:
             QMessageBox.warning(self, "Error", "Debe ingresar un nombre para la clase/objeto.")
             return
@@ -395,23 +423,34 @@ class SubVentanaCaptura(QDialog):
             config = {
                 "nombre_clase": nombre,
                 "objetivo": cantidad,
-                "ultimo_id": 0
+                "ultimo_id": 0,
+                "indice_clase": indice
             }
+            
             with open(os.path.join(ruta, "config.json"), "w") as f:
                 json.dump(config, f)
 
             QMessageBox.information(self, "Éxito", f"Carpeta '{nombre}' creada correctamente.")
             dialog.accept()
 
-            ventana = VentanaCaptura(ruta)
+            ventana = VentanaCaptura(ruta, indice)
             ventana.exec()
 
     def abrir_carpeta(self):
         carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta existente")
         if carpeta:
             print(f"Carpeta seleccionada: {carpeta}")
-            # Se corrigió: antes usaba una variable 'ruta' no definida.
-            ventana = VentanaCaptura(carpeta) 
+
+            config_path = os.path.join(carpeta, "config.json")
+            if not os.path.exists(config_path):
+                QMessageBox.critical(self, "Error", "No se encontró el archivo config.json en esta carpeta.")
+                return
+
+            with open(config_path, "r") as f:
+                config = json.load(f)
+                indice = config.get("indice_clase", 0)  # valor por defecto 0 si no existe
+
+            ventana = VentanaCaptura(carpeta, indice)
             ventana.exec()
 
 class VentanaSeleccionModeloYOLO(QDialog):
@@ -643,13 +682,14 @@ class VentanaEntrenamiento(QDialog):
         )
 
 class VentanaEtiquetadoImagenSubida(QDialog):
-    def __init__(self, ruta_imagen, carpeta_destino, nombre_clase, ultimo_id):
+    def __init__(self, ruta_imagen, carpeta_destino, nombre_clase, ultimo_id, indice_clase):
         super().__init__()
         self.setWindowTitle("🏷️ Etiquetar Imagen Subida")
         self.setFixedSize(800, 600)
 
         self.ruta_imagen = ruta_imagen
         self.carpeta = carpeta_destino
+        self.indice_clase = indice_clase
         self.nombre_clase = nombre_clase
         self.contador = ultimo_id
         self.nuevo_id = ultimo_id
@@ -752,7 +792,7 @@ class VentanaEtiquetadoImagenSubida(QDialog):
         h = abs(y2 - y1) / 480
 
         with open(ruta_txt, 'w') as f:
-            f.write(f"0 {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
+            f.write(f"{self.indice_clase} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
 
         QMessageBox.information(self, "Guardado", f"Imagen y etiqueta guardadas como {nombre_base}.*")
         self.nuevo_id = self.contador + 1
@@ -847,12 +887,8 @@ class VentanaPrincipal(QMainWindow):
         nombre_clase = config["nombre_clase"]
         ultimo_id = config["ultimo_id"]
 
-        dialog = VentanaEtiquetadoImagenSubida(
-            ruta_imagen, 
-            carpeta, 
-            nombre_clase, 
-            ultimo_id
-        )
+        indice_clase = obtener_o_crear_indice_clase(nombre_clase)
+        dialog = VentanaEtiquetadoImagenSubida(ruta_imagen, carpeta, nombre_clase, ultimo_id, indice_clase)
         if dialog.exec():
             config["ultimo_id"] = dialog.nuevo_id
             with open(config_path, "w") as f:
