@@ -470,7 +470,6 @@ class VentanaEntrenamiento(QDialog):
         with open("dark_theme.qss", "r") as f:
             self.setStyleSheet(f.read())
 
-
     def seleccionar_carpetas(self, tipo):
         selected_paths = None
         if tipo == "uniclase":
