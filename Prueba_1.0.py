@@ -714,8 +714,8 @@ class VentanaPrincipal(QMainWindow):
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
-        with open("dark_theme.qss", "r") as f:
-            self.setStyleSheet(f.read())
+        #with open("dark_theme.qss", "r") as f:
+            #self.setStyleSheet(f.read())
 
     def abrir_gestion_carpetas(self):
         ventana = VentanaGestionCarpetas()
