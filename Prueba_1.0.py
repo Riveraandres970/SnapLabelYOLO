@@ -12,154 +12,6 @@ import cv2
 from PyQt6.QtGui import QImage, QPixmap, QPainter, QPen, QIcon 
 import json
 
-# --- Tema Oscuro Global ---
-DARK_THEME_STYLESHEET = """
-    /* General Window Styling */
-    QMainWindow, QDialog {
-        background-color: #2c2c2c; /* Dark background */
-        color: #f0f0f0; /* Light text */
-        font-family: 'Segoe UI', sans-serif;
-    }
-
-    /* Labels */
-    QLabel {
-        color: #e0e0e0;
-        font-size: 14px;
-    }
-
-    /* Buttons */
-    QPushButton {
-        background-color: #555555; /* Darker grey for buttons */
-        color: #ffffff;
-        border: 1px solid #777777;
-        border-radius: 8px;
-        padding: 10px 15px;
-        font-weight: bold;
-        font-size: 15px;
-        transition: background-color 0.3s ease, border-color 0.3s ease;
-    }
-    QPushButton:hover {
-        background-color: #6a6a6a; /* Lighter grey on hover */
-        border-color: #999999;
-    }
-    QPushButton:pressed {
-        background-color: #444444; /* Even darker on press */
-        border-color: #666666;
-    }
-    QPushButton:disabled {
-        background-color: #3a3a3a;
-        color: #9a9a9a;
-        border-color: #5a5a5a;
-    }
-
-    /* Tool Buttons (Help Buttons) */
-    QToolButton {
-        background-color: #4a4a4a;
-        color: #ffffff;
-        border-radius: 20px; /* Make them circular */
-        border: 1px solid #666666;
-        font-size: 20px;
-        font-weight: bold;
-    }
-    QToolButton:hover {
-        background-color: #5a5a5a;
-        border-color: #777777;
-    }
-    QToolButton:pressed {
-        background-color: #3a3a3a;
-        border-color: #555555;
-    }
-
-    /* Line Edits and Spin Boxes */
-    QLineEdit, QSpinBox {
-        background-color: #3c3c3c;
-        color: #f0f0f0;
-        border: 1px solid #5a5a5a;
-        border-radius: 5px;
-        padding: 5px;
-    }
-    QLineEdit:focus, QSpinBox:focus {
-        border-color: #007bff; /* Accent color on focus */
-    }
-
-    /* QCheckBox */
-    QCheckBox {
-        color: #e0e0e0;
-        font-size: 14px;
-    }
-    QCheckBox::indicator {
-        width: 18px;
-        height: 18px;
-    }
-    QCheckBox::indicator:unchecked {
-        border: 1px solid #777777;
-        background-color: #4a4a4a;
-        border-radius: 3px;
-    }
-    QCheckBox::indicator:checked {
-        border: 1px solid #007bff;
-        background-color: #007bff;
-        /* You might need a white checkmark icon file here, e.g., url(./icons/check_white.png) */
-        border-radius: 3px;
-    }
-    QCheckBox::indicator:hover {
-        border-color: #999999;
-    }
-
-    /* QListView for file dialogs (if any custom styling is needed) */
-    QListView {
-        background-color: #3c3c3c;
-        color: #f0f0f0;
-        border: 1px solid #5a5a5a;
-    }
-    QListView::item:selected {
-        background-color: #007bff; /* Accent color for selected items */
-        color: #ffffff;
-    }
-
-    /* Custom QLabel for welcome message/info boxes */
-    QLabel#welcomeMessage, QLabel#infoLabel { /* Use objectName for specific QLabel styling */
-        background-color: #3a3a3a;
-        border: 2px solid #5a5a5a;
-        border-radius: 12px;
-        padding: 20px;
-        color: #f0f0f0;
-    }
-
-    /* Image Label in capture/labeling window */
-    QLabel#imageDisplayLabel { /* Using objectName */
-        border: 2px solid #007bff; /* Blue border for contrast */
-        border-radius: 10px;
-        background-color: #3a3a3a;
-    }
-
-    /* Scroll Area */
-    QScrollArea {
-        border: none;
-        background-color: transparent;
-    }
-    QScrollArea > QWidget {
-        background-color: transparent;
-    }
-    QScrollBar:vertical {
-        border: none;
-        background: #4a4a4a;
-        width: 10px;
-        margin: 0px 0 0px 0;
-        border-radius: 5px;
-    }
-    QScrollBar::handle:vertical {
-        background: #7a7a7a;
-        min-height: 20px;
-        border-radius: 5px;
-    }
-    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-        height: 0px;
-    }
-    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-        background: none;
-    }
-"""
 
 def mejorar_imagen(imagen):
     # Verifica si está en color
@@ -860,7 +712,9 @@ class VentanaPrincipal(QMainWindow):
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
-        self.setStyleSheet(DARK_THEME_STYLESHEET)
+        with open("dark_theme.qss", "r") as f:
+            self.setStyleSheet(f.read())
+
 
     def abrir_gestion_carpetas(self):
         ventana = VentanaGestionCarpetas()
