@@ -764,7 +764,12 @@ class VentanaPrincipal(QMainWindow):
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
-        self.setStyleSheet("background-color: #f8f9fa;") 
+        #with open("dark_theme.qss", "r") as f:
+            #self.setStyleSheet(f.read())
+
+    def abrir_gestion_carpetas(self):
+        ventana = VentanaGestionCarpetas()
+        ventana.exec()
     
     def mostrar_ventana_entrenamiento(self):
         dialog = VentanaEntrenamiento(self)
