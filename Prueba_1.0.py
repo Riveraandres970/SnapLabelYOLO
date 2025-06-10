@@ -359,8 +359,8 @@ class VentanaSeleccionModeloYOLO(QDialog):
         main_layout.addStretch()
 
         self.setLayout(main_layout)
-        with open("dark_theme.qss", "r") as f:
-            self.setStyleSheet(f.read())
+        #with open("dark_theme.qss", "r") as f:
+        #    self.setStyleSheet(f.read())
 
 
     def iniciar_entrenamiento_modelo(self, model_name):
@@ -467,8 +467,8 @@ class VentanaEntrenamiento(QDialog):
         layout.addStretch()
         
         self.setLayout(layout)
-        with open("dark_theme.qss", "r") as f:
-            self.setStyleSheet(f.read())
+        #with open("dark_theme.qss", "r") as f:
+        #    self.setStyleSheet(f.read())
 
     def seleccionar_carpetas(self, tipo):
         selected_paths = None
@@ -714,8 +714,8 @@ class VentanaPrincipal(QMainWindow):
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
-        with open("dark_theme.qss", "r") as f:
-            self.setStyleSheet(f.read())
+        #with open("dark_theme.qss", "r") as f:
+        #    self.setStyleSheet(f.read())
 
     def abrir_gestion_carpetas(self):
         ventana = VentanaGestionCarpetas()
