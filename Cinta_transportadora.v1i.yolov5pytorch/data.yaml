@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 4
+names: ['Amarillo', 'Azul', 'Rojo', 'Verde']
+
+roboflow:
+  workspace: cintatransportadora
+  project: cinta_transportadora
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/cintatransportadora/cinta_transportadora/dataset/1
