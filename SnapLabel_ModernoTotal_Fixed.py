@@ -26,10 +26,31 @@ class MainWindow(QMainWindow):
         self.menu_layout.setSpacing(10)
 
         # Botón de hamburguesa
-        self.toggle_btn = QPushButton("☰")
+        # Botón de hamburguesa con GIF animado
+        self.toggle_btn = QPushButton()
         self.toggle_btn.setFixedSize(40, 40)
+        self.toggle_btn.setStyleSheet("border: none; background-color: transparent;")
         self.toggle_btn.clicked.connect(self.toggle_menu)
+
+        hamburger_gif_path = os.path.abspath(r"iconos/cerrar.gif")  # Asegúrate de que este GIF exista
+        self.hamburger_movie = QMovie(hamburger_gif_path)
+        if not self.hamburger_movie.isValid():
+            print(f"[ERROR] No se pudo cargar el GIF del menú: {hamburger_gif_path}")
+        hamburger_label = QLabel()
+        hamburger_label.setMovie(self.hamburger_movie)
+        hamburger_label.setFixedSize(30, 30)
+        hamburger_label.setScaledContents(True)
+        self.hamburger_movie.start()
+
+        # Agrega el QLabel como ícono al QPushButton usando un layout
+        hamburger_widget = QWidget()
+        hamburger_layout = QHBoxLayout(hamburger_widget)
+        hamburger_layout.setContentsMargins(0, 0, 0, 0)
+        hamburger_layout.addWidget(hamburger_label, alignment=Qt.AlignCenter)
+        self.toggle_btn.setLayout(hamburger_layout)
+
         self.menu_layout.addWidget(self.toggle_btn, alignment=Qt.AlignLeft)
+
 
         self.buttons = {}
         self.stack = QStackedWidget()
@@ -50,7 +71,6 @@ class MainWindow(QMainWindow):
             "Subir imagen": r"iconos/Ventana_principal/Subir.gif",
             "Entrenar": r"iconos/Ventana_principal/entrenar.gif",
             "Validar": r"iconos/Ventana_principal/Validar.gif",
-            "Tutoría": r"iconos/Ventana_principal/tutorial.gif"
         }
 
         for i, (nombre, widget) in enumerate(menu_items.items()):
@@ -106,10 +126,28 @@ class MainWindow(QMainWindow):
         self.menu_layout.addStretch()
 
 
+
         # Botón "Tutoría" especial, al final
+        tutoria_widget = QWidget()
+        tutoria_layout = QHBoxLayout(tutoria_widget)
+        tutoria_layout.setContentsMargins(0, 0, 0, 0)
+
+        gif_tutoria_label = QLabel()
+        gif_tutoria_label.setFixedSize(24, 24)
+        gif_tutoria_label.setScaledContents(True)
+        ruta_tutoria_gif = os.path.abspath(r"iconos/Tutorial.gif")  # Asegúrate de que exista
+        tutoria_movie = QMovie(ruta_tutoria_gif)
+        if not tutoria_movie.isValid():
+            print(f"[ERROR] GIF inválido para Tutoría: {ruta_tutoria_gif}")
+        self.movies.append(tutoria_movie)
+        gif_tutoria_label.setMovie(tutoria_movie)
+        tutoria_movie.start()
+
         self.tutoria_btn = QPushButton("Tutoría")
         self.tutoria_btn.setCheckable(True)
-        self.tutoria_btn.clicked.connect(self.cambiar_pagina_factory(len(menu_items), self.tutoria_btn))
+        self.tutoria_btn.clicked.connect(
+            self.cambiar_pagina_factory(len(self.buttons), self.tutoria_btn)
+        )
         self.tutoria_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.tutoria_btn.setStyleSheet("""
             QPushButton {
@@ -131,9 +169,10 @@ class MainWindow(QMainWindow):
             }
         """)
 
+        tutoria_layout.addWidget(gif_tutoria_label)
+        tutoria_layout.addWidget(self.tutoria_btn)
+        self.menu_layout.addWidget(tutoria_widget)
 
-        
-        self.menu_layout.addWidget(self.tutoria_btn)
         self.stack.addWidget(self.crear_pagina("Guía de uso y consejos"))
 
         
