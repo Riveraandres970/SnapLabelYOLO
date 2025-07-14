@@ -1355,6 +1355,26 @@ class VentanaPrincipal(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f5f5f5; /* Un gris claro suave */
+            }
+            QLabel#welcomeMessage {
+                color: #333333; /* Texto oscuro */
+                font-weight: bold;
+            }
+            QPushButton {
+                background-color: #ffffff; /* Botones blancos */
+                border: 1px solid #cccccc;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+        """)
+
+
         self.setWindowTitle("🌟 Snap Label YOLO - Tu Etiquetador y Entrenador de IA")
         self.setFixedSize(600, 650) # Aumentado el tamaño para el nuevo botón
 
