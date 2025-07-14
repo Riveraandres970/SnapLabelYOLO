@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QScrollArea, QProgressBar, QTextBrowser, QListWidget, QListWidgetItem # Añadido QListWidget
 )
 from PyQt6.QtCore import Qt, QRect, QPoint, QSize, QTimer, QThread, pyqtSignal, QDateTime
-from PyQt6.QtGui import QImage, QPixmap, QPainter, QPen # Asegúrate de importar QPainter y QPen
+from PyQt6.QtGui import QImage, QPixmap, QPainter, QPen, QMovie # Asegúrate de importar QPainter y QPen
 
 # Importa la librería ultralytics
 try:
