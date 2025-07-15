@@ -1351,6 +1351,68 @@ class VentanaGestionCarpetas(QDialog):
                 QMessageBox.critical(self, "Error", f"No se pudo eliminar la carpeta '{nombre_carpeta}': {str(e)}")
 
 
+class VentanaValidacion(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("✅ Validar Modelo YOLO")
+        self.setFixedSize(400, 200)
+
+        layout = QVBoxLayout()
+
+        self.btn_seleccionar_modelo = QPushButton("📂 Seleccionar Modelo YOLO (.pt)")
+        self.btn_seleccionar_modelo.clicked.connect(self.seleccionar_modelo)
+        layout.addWidget(self.btn_seleccionar_modelo)
+
+        self.lbl_info = QLabel("No hay modelo cargado.")
+        self.lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.lbl_info)
+
+        self.setLayout(layout)
+
+        self.model = None
+
+    def seleccionar_modelo(self):
+        archivo, _ = QFileDialog.getOpenFileName(
+            self, "Seleccionar Modelo", "", "Modelos YOLO (*.pt)"
+        )
+        if archivo:
+            self.lbl_info.setText("Cargando modelo...")
+            QApplication.processEvents()
+            try:
+                self.model = torch.hub.load('ultralytics/yolov5', 'custom', path=archivo)
+                self.lbl_info.setText("Modelo cargado correctamente. Iniciando cámara...")
+                self.validar()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"No se pudo cargar el modelo:\n{str(e)}")
+                self.lbl_info.setText("Error al cargar modelo.")
+
+    def validar(self):
+        if self.model is None:
+            return
+
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            QMessageBox.critical(self, "Error", "No se pudo acceder a la cámara.")
+            return
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            results = self.model(frame)
+            img = results.render()[0]
+
+            cv2.imshow("Validación YOLO - Presiona Q para salir", img)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+
+
 class VentanaPrincipal(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -1404,6 +1466,7 @@ class VentanaPrincipal(QMainWindow):
         self.btn_subir.clicked.connect(self.subir_imagen)
         self.btn_gestionar_carpetas.clicked.connect(self.abrir_ventana_gestion_carpetas) # Conectar nuevo botón
         self.btn_entrenar.clicked.connect(self.mostrar_ventana_entrenamiento)
+        self.btn_validar.clicked.connect(self.abrir_ventana_validacion)
         
         for btn in [self.btn_capturar, self.btn_subir, self.btn_gestionar_carpetas, # Añadir el nuevo botón
                    self.btn_entrenar, self.btn_validar, self.btn_tutorial]:
@@ -1479,6 +1542,11 @@ class VentanaPrincipal(QMainWindow):
     def open_save_results_dialog(self, ultralytics_output_dir):
         save_dialog = VentanaGuardarResultados(ultralytics_output_dir, self)
         save_dialog.exec()
+
+    def abrir_ventana_validacion(self):
+        dialog = VentanaValidacion()
+        dialog.exec()
+
 
 
 if __name__ == "__main__":
